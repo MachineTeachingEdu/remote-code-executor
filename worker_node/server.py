@@ -1,67 +1,74 @@
-from flask import Flask, request, flash, redirect
+from pathlib import Path
+from flask import Flask, request,  abort
 from werkzeug.utils import secure_filename
 import os
 import zipfile
 import glob
 import socket
-UPLOAD_FOLDER = './code'
+from evaluation import evaluate_file
+from exceptions import DangerException
+
+BASE_DIR = (Path(__file__).parent / "code").absolute()
 ALLOWED_EXTENSIONS = {'zip'}
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+def _valid_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/')
+def _unzip_file(file_name):
+    with zipfile.ZipFile(f"{BASE_DIR}/{file_name}", mode="r") as archive:
+        archive.extractall(path=BASE_DIR.as_posix())
+
+    return (BASE_DIR / "run_me.py").as_posix()
+
+def _run_client_code(file_path):
+    os.system(f'python3 "{file_path}" > "{BASE_DIR.as_posix()}/output.txt"')
+
+def _delete_temp_files():
+    for f in glob.glob(BASE_DIR.as_posix() + '/*'):
+        os.remove(f)
+
+@app.route('/', methods=['GET'])
 def health_check():
     return {'message': f'Hello World from {socket.gethostname()}!'}, 200
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def _unzip_file():
-    with zipfile.ZipFile("./code/extract_me.zip", mode="r") as archive:
-        archive.extractall(path="./code")
-
-def _run_client_code():
-    os.system("python3 ./code/run_me.py > ./code/output.txt")
-
-def _delete_temp_files():
-    files = glob.glob('./code/*')
-    print(files)
-    for f in files:
-        os.remove(f)
-
 @app.route('/', methods=['POST'])
 def upload_file():
-    if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
-        file = request.files['file']
-        # If the user does not select a file, the browser submits an
-        # empty file without a filename.
-        if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            _unzip_file()
-            _run_client_code()
+
+    if 'file' not in request.files:
+        abort(400, 'Missing submission file')
+
+    file = request.files['file']
+
+    if file and _valid_file(file.filename):
+        compressed_file_name = secure_filename(file.filename)
+        file.save(os.path.join(BASE_DIR, compressed_file_name))
+
+        try:
+            submitted_code_path = _unzip_file(compressed_file_name)
+
+            evaluate_file(submitted_code_path)
+            
+            _run_client_code(submitted_code_path)
 
             response = {
                 'status': 'success',
-                'output': open('./code/output.txt', 'r').read(),
+                'output': open((BASE_DIR / 'output.txt').as_posix(), 'r').read(),
                 'hostname': socket.gethostname()
             }
 
+        except DangerException:
+            abort(403, "Potential malicious code")
+
+        except Exception as e:
+            abort(500, e)
+        
+        finally:
             _delete_temp_files()
 
-            return response
-
-    return 
+        return response
 
 
 if __name__ == '__main__':
