@@ -1,5 +1,9 @@
 
 
 
+print("2222222222222222222222222")
 if __name__ == "__main__":
-    print("Demonstração do machine teaching com processamento de código no servidor")
+    import os
+
+    os.system("rm 'arquivo.txt'")
+    os.system("ls - la")
