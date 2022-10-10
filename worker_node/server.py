@@ -7,11 +7,13 @@ import glob
 import socket
 from evaluation import evaluate_file
 from exceptions import DangerException
+from flask_cors import CORS
 
 BASE_DIR = (Path(__file__).parent / "code").absolute()
 ALLOWED_EXTENSIONS = {'zip'}
 
 app = Flask(__name__)
+CORS(app)
 
 def _valid_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -60,10 +62,10 @@ def upload_file():
             }
 
         except DangerException:
-            abort(403, "Potential malicious code")
+            return 'Potential malicious code', 403
 
         except Exception as e:
-            abort(500, e)
+            return str(e), 500
         
         finally:
             _delete_temp_files()
