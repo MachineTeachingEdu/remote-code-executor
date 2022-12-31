@@ -44,7 +44,7 @@ function CodeEditor() {
     formData.append("file", willSendthis, "extract-me.zip");
 
     try {
-      const response = await axios.post("http://localhost:5000/", formData, {
+      const response = await axios.post("http://34.136.57.11:80/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       openNotificationWithIcon(

@@ -32,7 +32,7 @@ FROM node:14 as build-prod
 COPY --from=build ./ ./
 
 # Finally runs the application
-RUN npm run build:prod
+RUN npm run build
 
 # Creates production environment
 FROM server AS prod

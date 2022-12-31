@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: machine-teaching-containers
-          image: gcr.io/machine-teaching-347613/machine-teaching-worker:kubernetes
+          image: gcr.io/tcc-mt/machine-teaching-worker:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000

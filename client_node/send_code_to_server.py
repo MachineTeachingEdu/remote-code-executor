@@ -1,17 +1,18 @@
 import logging
 import os, requests, zipfile
 import json
-
+from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 
-SERVER_ADDRESS, SERVER_PORT = "10.105.150.56", "5000"
+current_path = Path(__file__).parent.absolute().as_posix()
 
+SERVER_ADDRESS = "http://34.136.57.11:80"
 # Zipping student code
-zipfile.ZipFile("extract_me.zip", mode="w").write("run_me.py")
+zipfile.ZipFile(f"extract_me.zip", mode="w").write(f"run_me.py")
 
 try:
     # Sending student code to server
-    response = requests.post(f"http://{SERVER_ADDRESS}:{SERVER_PORT}/", files={"file": open("extract_me.zip", "rb")})
+    response = requests.post(f"{SERVER_ADDRESS}/", files={"file": open(f"extract_me.zip", "rb")}, timeout=5)
     logging.info("*********  Resposta do servidor ******** \n")
     logging.info(json.dumps(response.json(), indent=4, sort_keys=True))
 
@@ -20,4 +21,4 @@ except Exception as e:
 finally:
     # Cleaning up
     logging.info("Cleaning up")
-    os.remove('./extract_me.zip')
+    os.remove(f'extract_me.zip')

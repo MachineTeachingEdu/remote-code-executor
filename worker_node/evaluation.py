@@ -4,7 +4,7 @@ Module to evaluate the code submitted by the student looking for potential malic
 import os
 from pathlib import Path
 import json
-from exceptions import DangerException
+from .exceptions import DangerException
 
 def evaluate_file(absolute_path: str):
 
