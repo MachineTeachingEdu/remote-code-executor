@@ -10,13 +10,12 @@ from exceptions import DangerException
 from flask_cors import CORS
 
 BASE_DIR = (Path(__file__).parent / "code").absolute()
-ALLOWED_EXTENSIONS = {'zip'}
 
 app = Flask(__name__)
 CORS(app)
 
 def _valid_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'zip'}
 
 def _unzip_file(file_name):
     with zipfile.ZipFile(f"{BASE_DIR}/{file_name}", mode="r") as archive:
@@ -51,15 +50,8 @@ def upload_file():
         try:
             submitted_code_path = _unzip_file(compressed_file_name)
 
-            evaluate_file(submitted_code_path)
-            
+            evaluate_file(submitted_code_path)            
             _run_client_code(submitted_code_path)
-
-            response = {
-                'status': 'success',
-                'output': open((BASE_DIR / 'output.txt').as_posix(), 'r').read(),
-                'hostname': socket.gethostname()
-            }
 
         except DangerException:
             return 'Potential malicious code', 403
@@ -67,10 +59,13 @@ def upload_file():
         except Exception as e:
             return str(e), 500
         
-        finally:
-            _delete_temp_files()
+        _delete_temp_files()
 
-        return response
+        return {
+                'status': 'success',
+                'output': open((BASE_DIR / 'output.txt').as_posix(), 'r').read(),
+                'hostname': socket.gethostname()
+            }
 
 
 if __name__ == '__main__':
