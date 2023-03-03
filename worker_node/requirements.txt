@@ -3,3 +3,4 @@ werkzeug
 asttokens
 bandit
 flask_cors
+gunicorn
