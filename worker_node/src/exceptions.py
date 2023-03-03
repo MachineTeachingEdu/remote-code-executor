@@ -5,3 +5,7 @@ class DangerException(Exception):
 
     def __str__(self):
         return self.message
+
+
+class CodeException(Exception):
+    pass

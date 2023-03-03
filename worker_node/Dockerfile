@@ -4,9 +4,15 @@ FROM python:3.8-slim-buster
 EXPOSE 5000
 RUN echo teste
 COPY requirements.txt requirements.txt
-COPY server.py server.py
+COPY src/ .
+COPY bandit_config.yml .
 RUN pip3 install -r requirements.txt
 RUN mkdir code
 
 
-CMD [ "python3" , "server.py"]
+CMD gunicorn \
+    --max-requests-jitter 0 \
+    --bind 0.0.0.0:$PORT \
+    --timeout 200 \
+    -w 5 \
+    'server:app'

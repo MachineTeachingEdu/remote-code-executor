@@ -7,6 +7,7 @@ import "prismjs/components/prism-javascript";
 import "prismjs/themes/prism-funky.css"; // Example style, you can use another
 import "prismjs/components/prism-python.js";
 import { notification } from "antd";
+import { OmitProps } from "antd/lib/transfer/ListBody";
 
 const exampleCode = `# Escreva o código a ser processado pelo servidor
 
@@ -25,7 +26,7 @@ else:
 
 print("O maior número é ", maior)`;
 
-function CodeEditor() {
+function CodeEditor({ addResult, loading }) {
   const [code, setCode] = React.useState(exampleCode);
 
   const openNotificationWithIcon = (type, title, message) => {
@@ -36,6 +37,7 @@ function CodeEditor() {
   };
 
   const sendCodeToServer = async () => {
+    loading(true);
     const zip = require("jszip")();
     zip.file("run_me.py", code);
 
@@ -43,27 +45,65 @@ function CodeEditor() {
     const willSendthis = await zip.generateAsync({ type: "blob" });
     formData.append("file", willSendthis, "extract-me.zip");
 
+    const start = new Date();
+
     try {
-      const response = await axios.post("http://34.136.57.11:80/", formData, {
+      const response = await axios.post("http://localhost:5000/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      openNotificationWithIcon(
-        "success",
-        "Código executado com sucesso",
-        response.data.output
-      );
+      const end = new Date();
+      const timeTaken = end - start;
+
+      addResult({
+        success: true,
+        output: response.data.output,
+        hostname: response.data.hostname,
+        timeTaken: timeTaken,
+      });
+      // openNotificationWithIcon(
+      // "success",
+      // "Código executado com sucesso",
+      // response.data.output + "\n\n" + response.data.hostname
+      // );
     } catch (error) {
-      openNotificationWithIcon("error", "Erro", error.response.data);
+      console.log(error);
+      const end = new Date();
+      const timeTaken = end - start;
+      console.log(error);
+      if (error.response.status === 400) {
+        addResult({
+          success: false,
+          output: error.response.data.output.replace(/File.*<module>/, ""),
+          hostname: error.response.data.hostname,
+          timeTaken: timeTaken,
+        });
+      } else {
+        addResult({
+          success: false,
+          output: error.response.data.output,
+          hostname: error.response.data.hostname,
+          timeTaken: timeTaken,
+        });
+      }
+      openNotificationWithIcon("error", "Erro", error.response.data.output);
     }
+
+    loading(false);
   };
 
   return (
-    <>
+    <div
+      style={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <div
         style={{
-          width: window.innerWidth > 1000 ? "50vw" : "90vw",
-          height: "500px",
           overflow: "auto",
+          // width: window.innerWidth > 1000 ? "50%" : "90vw",
+          maxHeight: "500px",
         }}
       >
         <Editor
@@ -82,7 +122,7 @@ function CodeEditor() {
       <button className="mtButton" onClick={sendCodeToServer}>
         Executar
       </button>
-    </>
+    </div>
   );
 }
 
