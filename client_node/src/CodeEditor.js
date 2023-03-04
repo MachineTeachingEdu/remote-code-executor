@@ -48,7 +48,7 @@ function CodeEditor({ addResult, loading }) {
     const start = new Date();
 
     try {
-      const response = await axios.post("http://localhost:5000/", formData, {
+      const response = await axios.post("http://34.136.57.11/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const end = new Date();
