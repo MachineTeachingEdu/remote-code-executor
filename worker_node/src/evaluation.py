@@ -35,7 +35,8 @@ def evaluate_file(absolute_path: str):
 
     sast_result_file_path = absolute_path.replace(".py", "") + "_result.json"
 
-    os.system(f'bandit -c bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')
+    #os.system(f'bandit -c bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')    #Esta linha é para o container
+    os.system(f'bandit -c /home/nickashu/testeWorkerNode/remote-code-executor/worker_node/bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')
 
     code = open(absolute_path, "r").read()
 
@@ -62,6 +63,7 @@ def evaluate_file(absolute_path: str):
 
 
     if AVG_DANGER_SCORE >= 1:
-        raise DangerException("Danger score is too high")
+        #raise DangerException("Danger score is too high")
+        raise DangerException("Este código pode apresentar vulnerabilidades")
 
     return
