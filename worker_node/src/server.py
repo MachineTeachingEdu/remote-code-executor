@@ -53,6 +53,16 @@ def _delete_temp_files(folder: Path):   #Deletando as pastas temporárias criada
     os.rmdir(folder.as_posix())
     os.rmdir(folder.parent.as_posix())
 
+def _create_temp_dir():
+    unique_id = uuid.uuid4().hex
+    #os.makedirs(unique_id + "/code")     #Esta linha é para o container
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(current_directory, unique_id + "/code")
+    os.makedirs(path)
+    
+    TEMP_DIR = (Path(__file__).parent / unique_id / "code").absolute()
+    return TEMP_DIR
+
 
 @app.route('/', methods=['GET'])
 def health_check():
@@ -81,20 +91,18 @@ def pre_process():
     except Exception:
         return {'errorMsg': "Erro! Algum argumento foi passado indevidamente na chamada AJAX."}, 400
     if file and _valid_file(file.filename):
-        unique_id = uuid.uuid4().hex
-        #os.makedirs(unique_id + "/code")     #Esta linha é para o container
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(current_directory, unique_id + "/code")
-        os.makedirs(path)
-        TEMP_DIR = (Path(__file__).parent / unique_id / "code").absolute()
-        compressed_file_name = secure_filename(file.filename)
-        file.save(os.path.join(TEMP_DIR, compressed_file_name))
+        try:
+            TEMP_DIR = _create_temp_dir()
+            compressed_file_name = secure_filename(file.filename)
+            file.save(os.path.join(TEMP_DIR, compressed_file_name))
+        except Exception:
+            return {'errorMsg': "Erro na criação de arquivos temporários!"}, 500
 
         try:
             submitted_code_path = _unzip_file_codes(TEMP_DIR, compressed_file_name, langExtension, professor_code=False)
             objLang.evaluate_file(submitted_code_path)   #Checagem de vulnerabilidades
             code = open(submitted_code_path, "r").read()
-            final_code = objLang.pre_process_code(code)
+            final_code = objLang.pre_process_code(code, submitted_code_path)   #Removendo comentários do código e checando funções inválidas
             result = {
                 'code_status': 0,    #Código válido
                 'message': '',
@@ -120,14 +128,21 @@ def pre_process():
             return result
         except DangerException as e:
             result = {
-                'code_status': 3,    #Vulnerabilidades detectadas
+                'code_status': 3,    #Vulnerabilidades detectadas no código
                 'message': e.message,
                 'final_code': '',
             }
             _delete_temp_files(TEMP_DIR)
             return result
-        
-        except Exception:
+        except CodeException as e:
+            result = {
+                'code_status': 4,    #Erros de sintaxe ou de compilação
+                'message': e.message,
+                'final_code': '',
+            }
+            _delete_temp_files(TEMP_DIR)
+            return result
+        except Exception as e:
             _delete_temp_files(TEMP_DIR)
             return {'errorMsg': "Erro na extração do arquivo .zip e leitura do código!"}, 500
     else:
@@ -159,14 +174,7 @@ def upload_file():
 
     if file and _valid_file(file.filename):
         try:
-            unique_id = uuid.uuid4().hex
-            #os.makedirs(unique_id + "/code")     #Esta linha é para o container
-            current_directory = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(current_directory, unique_id + "/code")
-            os.makedirs(path)
-        
-            TEMP_DIR = (Path(__file__).parent / unique_id / "code").absolute()
-
+            TEMP_DIR = _create_temp_dir()
             compressed_file_name = secure_filename(file.filename)
             file.save(os.path.join(TEMP_DIR, compressed_file_name))
         except Exception:
@@ -191,7 +199,6 @@ def upload_file():
                 with open(professor_code_path, 'w') as file:
                     file.write(professorCodeArgs)
                 
-                #objLang.evaluate_file(submitted_code_path)
                 code_output = objLang.run_code(submitted_code_path, False)
                 
                 result = {
@@ -205,12 +212,15 @@ def upload_file():
             except CodeException as e:
                 result = {
                     'isCorrect': False,
-                    'code_output': str(e),
+                    'code_output': e.message,
                     'prof_output': '',
                     'hostname': socket.gethostname(),
                 }
                 status_code = 400
-
+            except Exception as e:
+                _delete_temp_files(TEMP_DIR)
+                return {'errorMsg': "Erro na execução dos códigos!"}, 500
+            """
             except DangerException as e:
                 result = {
                     'isCorrect': False,
@@ -219,10 +229,7 @@ def upload_file():
                     'hostname': socket.gethostname(),
                 }
                 status_code = 403
-
-            except Exception as e:
-                _delete_temp_files(TEMP_DIR)
-                return {'errorMsg': "Erro na execução dos códigos!"}, 500
+            """
             
             if status_code != 200:
                 with open(professor_code_path, 'w') as file:

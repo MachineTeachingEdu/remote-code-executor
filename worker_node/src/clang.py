@@ -61,7 +61,10 @@ int main(){{
         outputs[0] = False if outputs[0].upper() == "0" else True
         return outputs
     
-    def pre_process_code(self, code: str):
+    def run_pre_process_code(self, file_path: str):   #Verificando erros de sintaxe
+        compile_code(file_path, 0)
+    
+    def pre_process_code(self, code: str, code_path: str):
         code_without_comments = re.sub(r'\/\/.*$', '', code, flags=re.MULTILINE)
         code_without_comments = re.sub(r'\/\*[\s\S]*?\*\/', '', code_without_comments, flags=re.MULTILINE)
         code_without_comments = code_without_comments.strip()
@@ -69,8 +72,13 @@ int main(){{
         has_print = bool(print_regex.search(code_without_comments))
         if has_print:
             raise PrintException("")
+        
+        mainPart = "\nint main() {return 0;}"
+        codeWithMain = code + mainPart
+        with open(code_path, 'w') as file:
+            file.write(codeWithMain)
+        self.run_pre_process_code(code_path)   #Checando por erros na compilação do código
         return code_without_comments
-
 
 formats_printf = {
     "int": "%d",
@@ -108,6 +116,7 @@ def compile_code(file_path: str, offSetLines: int):
 def process_compile_errors(compile_error: str, offSetLines: int):
     error_pattern = re.compile(r'([^:]+):(\d+):(\d+): (\w+): (.+)')   #Uso de expressões regulares
     function_error = ""
+    error_message = ""
 
     for line in compile_error.splitlines():  #Percorrendo cada linha das mensagens de erro
         if " In function " in line:
@@ -121,4 +130,4 @@ def process_compile_errors(compile_error: str, offSetLines: int):
             error_message = f"COMPILE ERROR\n{function_error}\nLine {lineNumber}: Char {column}: {message_type}: {message}"
             return error_message
     
-    return None
+    return error_message

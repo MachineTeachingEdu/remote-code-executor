@@ -34,7 +34,10 @@ class JuliaLanguage(BaseLanguage):
         outputs[0] = True if outputs[0].upper() == "TRUE" else False
         return outputs
     
-    def pre_process_code(self, code: str):
+    def run_pre_process_code(self, file_path: str):
+        return
+    
+    def pre_process_code(self, code: str, code_path: str):
         code_without_comments = re.sub(r'#=(.*?)=#', '', code, flags=re.DOTALL)
         code_without_comments = re.sub(r'#.*$', '', code_without_comments, flags=re.MULTILINE)
         code_without_comments = code_without_comments.strip()
@@ -42,6 +45,7 @@ class JuliaLanguage(BaseLanguage):
         has_print = bool(print_regex.search(code_without_comments))
         if has_print:
             raise PrintException("")
+        self.run_pre_process_code(code_path)
         return code_without_comments
     
     

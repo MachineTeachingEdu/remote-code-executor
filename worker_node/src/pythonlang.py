@@ -83,7 +83,21 @@ if error:
             error += f"  on line {line_number}"
         raise CodeException(error)
     
-    def pre_process_code(self, code: str):
+    
+    def run_pre_process_code(self, file_path: str):   #Verificando erros de sintaxe
+        result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True)
+        stderr = result.stderr
+        if "SyntaxError" in stderr:
+            error_message = "Syntax Error:"
+            matches = list(re.finditer(r'line (\d+)', stderr))
+            if matches:
+                last_match = matches[-1]
+                line_number = int(last_match.group(1))
+                error_message += f"  on line {line_number}"
+            raise CodeException(error_message)
+    
+    
+    def pre_process_code(self, code: str, code_path: str):
         code_without_comments = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
         code_without_comments = re.sub(r"'''[\s\S]*?'''|\"\"\"[\s\S]*?\"\"\"", '', code_without_comments, flags=re.MULTILINE)
         code_without_comments = code_without_comments.strip()
@@ -92,6 +106,7 @@ if error:
         if has_print:
             raise PrintException("")
         verify_against_blacklist(code_without_comments)   #Verificando importações inválidas
+        self.run_pre_process_code(code_path)   #Verificando erros de sintaxe
         return code_without_comments
     
 
