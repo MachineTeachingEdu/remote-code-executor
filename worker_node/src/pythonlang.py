@@ -9,9 +9,12 @@ import re
 class PythonLanguage(BaseLanguage):
     def __init__(self, langExtension:str):   
         self.__offsetCodeLines = 4
+        self.__baseCodeLines = -1
         super().__init__(langExtension)
     
-    def base_code_with_args(self, baseCode: str, name_file_professor: str, funcName: str, funcNameProf: str, arg):
+    def base_code_with_args(self, baseCode: str, name_file_professor: str, funcName: str, funcNameProf: str, arg, returnType = ""):
+        #print(f"baseCodeLines: {self.__baseCodeLines}")
+        self.__baseCodeLines = len(baseCode.splitlines())
         baseCode = '\n'.join('        ' + linha for linha in baseCode.splitlines())     #Adicionando identação
         resultArgs = f"""import traceback
 def execute_code():
@@ -35,7 +38,7 @@ if error:
     print(f"{{line_number}}\\n{{error_type}}\\n{{error_message}}")"""
         return resultArgs
     
-    def professor_code_with_args(self, professorCode: str, funcName: str, funcNameProf: str, arg):
+    def professor_code_with_args(self, professorCode: str, funcName: str, funcNameProf: str, arg, returnType = ""):
         outputProf = f"\nprint({funcName}(*{arg}))"
         outputProfCode = professorCode + outputProf
         return professorCode, outputProfCode
@@ -79,8 +82,9 @@ if error:
         error_message = outputs[2]
         error_message = error_message.replace("execute_code.<locals>.", "")
         error = f"{error_type}: {error_message}"
-        if "NameError" not in error_type and "TypeError" not in error_type:
-            error += f"  on line {line_number}"
+        if self.__baseCodeLines != -1 and int(line_number) <= self.__baseCodeLines:
+            error += f" on line {line_number}"
+            
         raise CodeException(error)
     
     
@@ -88,7 +92,7 @@ if error:
         result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True)
         stderr = result.stderr
         if "SyntaxError" in stderr:
-            error_message = "Syntax Error:"
+            error_message = "SyntaxError:"
             matches = list(re.finditer(r'line (\d+)', stderr))
             if matches:
                 last_match = matches[-1]
@@ -112,13 +116,14 @@ if error:
 
 def process_errors(stderr: str, offSetLines: int):
     error_message = stderr.splitlines()[-1]
-    if "SyntaxError" in stderr:
-        matches = list(re.finditer(r'line (\d+)', stderr))
-        if matches:
-            last_match = matches[-1]
-            line_number = int(last_match.group(1)) - offSetLines
-            error_message += f"  on line {line_number}"
-    return error_message
+    return_message = error_message
+    matches = list(re.finditer(r'line (\d+)', stderr))
+    if matches:
+        last_match = matches[-1]
+        line_number = int(last_match.group(1)) - offSetLines
+        return_message = return_message.split(" on line")[0]
+        return_message += f" on line {line_number}"
+    return return_message
 
 
 def verify_against_blacklist(code: str):

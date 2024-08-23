@@ -82,21 +82,20 @@ def pre_process():
     file = request.files['file']
     try:
         funcName = request.form.get("funcName")
-        idLangTxt = request.form.get("id_language")
-        if not funcName or not idLangTxt:
+        lang = request.form.get("prog_lang")
+        if not funcName or not lang:
             raise Exception()
-        idLang = int(idLangTxt)
-        objLang = LanguageFactory.create_object_language(idLang)
+        objLang = LanguageFactory.create_object_language(lang)
         langExtension = objLang.langExtension
     except Exception:
-        return {'errorMsg': "Erro! Algum argumento foi passado indevidamente na chamada AJAX."}, 400
+        return {'errorMsg': "Error: AJAX call with invalid arguments."}, 400
     if file and _valid_file(file.filename):
         try:
             TEMP_DIR = _create_temp_dir()
             compressed_file_name = secure_filename(file.filename)
             file.save(os.path.join(TEMP_DIR, compressed_file_name))
         except Exception:
-            return {'errorMsg': "Erro na criação de arquivos temporários!"}, 500
+            return {'errorMsg': "Error: Couldn't create temporary files."}, 500
 
         try:
             submitted_code_path = _unzip_file_codes(TEMP_DIR, compressed_file_name, langExtension, professor_code=False)
@@ -144,7 +143,7 @@ def pre_process():
             return result
         except Exception as e:
             _delete_temp_files(TEMP_DIR)
-            return {'errorMsg': "Erro na extração do arquivo .zip e leitura do código!"}, 500
+            return {'errorMsg': "Error: Couldn't extract .zip file and read the code."}, 500
     else:
         abort(400, 'Invalid file')
 
@@ -159,18 +158,17 @@ def upload_file():
     try:
         args = request.form.get("args")
         funcName = request.form.get("funcName")
-        idLangTxt = request.form.get("id_language")
-        if not args or not funcName or not idLangTxt:
+        returnType = request.form.get("returnType")
+        lang = request.form.get("prog_lang")
+        if not args or not funcName or not lang:
             raise Exception()
-        
         funcNameProf = funcName + "_prof"
-        idLang = int(idLangTxt)
-        objLang = LanguageFactory.create_object_language(idLang)
+        objLang = LanguageFactory.create_object_language(lang)
         langExtension = objLang.langExtension
         
         args = json.loads(args)
     except Exception:
-        return {'errorMsg': "Erro! Algum argumento foi passado indevidamente na chamada AJAX."}, 400
+        return {'errorMsg': "Error: AJAX call with invalid arguments."}, 400
 
     if file and _valid_file(file.filename):
         try:
@@ -178,7 +176,7 @@ def upload_file():
             compressed_file_name = secure_filename(file.filename)
             file.save(os.path.join(TEMP_DIR, compressed_file_name))
         except Exception:
-            return {'errorMsg': "Erro na criação de arquivos temporários!"}, 500
+            return {'errorMsg': "Error: Couldn't create temporary files."}, 500
         
         try:
             submitted_code_path, professor_code_path = _unzip_file_codes(TEMP_DIR, compressed_file_name, langExtension, professor_code=True)
@@ -186,13 +184,13 @@ def upload_file():
             professorCode = open(professor_code_path, "r").read()
         except Exception:
             _delete_temp_files(TEMP_DIR)
-            return {'errorMsg': "Erro na extração do arquivo .zip e leitura dos códigos!"}, 500
+            return {'errorMsg': "Error: Couldn't extract .zip file and read the code."}, 500
         
         results = []
         for index, arg in enumerate(args):
             try:
-                codeArgs = objLang.base_code_with_args(baseCode, name_file_professor, funcName, funcNameProf, arg)
-                professorCodeArgs, outputProfessorCodeArgs = objLang.professor_code_with_args(professorCode, funcName, funcNameProf, arg)   # outputProfessorCodeArgs possui o código base do professor mais a parte do output da função
+                codeArgs = objLang.base_code_with_args(baseCode, name_file_professor, funcName, funcNameProf, arg, returnType)
+                professorCodeArgs, outputProfessorCodeArgs = objLang.professor_code_with_args(professorCode, funcName, funcNameProf, arg, returnType)   # outputProfessorCodeArgs possui o código base do professor mais a parte do output da função
                 
                 with open(submitted_code_path, 'w') as file:
                     file.write(codeArgs)   #Escrevendo o código com os argumentos para ser testado
@@ -220,16 +218,6 @@ def upload_file():
             except Exception as e:
                 _delete_temp_files(TEMP_DIR)
                 return {'errorMsg': "Erro na execução dos códigos!"}, 500
-            """
-            except DangerException as e:
-                result = {
-                    'isCorrect': False,
-                    'code_output': e.message,
-                    'prof_output': '',
-                    'hostname': socket.gethostname(),
-                }
-                status_code = 403
-            """
             
             if status_code != 200:
                 with open(professor_code_path, 'w') as file:
