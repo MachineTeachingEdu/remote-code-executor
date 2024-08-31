@@ -10,6 +10,7 @@ import uuid
 import logging
 import json
 from languagefactory import LanguageFactory
+from config import PRODUCTION
 
 logging.basicConfig(level=logging.INFO)
 BASE_DIR = (Path(__file__).parent / "code").absolute()
@@ -55,10 +56,12 @@ def _delete_temp_files(folder: Path):   #Deletando as pastas temporárias criada
 
 def _create_temp_dir():
     unique_id = uuid.uuid4().hex
-    #os.makedirs(unique_id + "/code")     #Esta linha é para o container
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_directory, unique_id + "/code")
-    os.makedirs(path)
+    if PRODUCTION:
+        os.makedirs(unique_id + "/code")     #Esta linha é para o container
+    else:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(current_directory, unique_id + "/code")
+        os.makedirs(path)
     
     TEMP_DIR = (Path(__file__).parent / unique_id / "code").absolute()
     return TEMP_DIR
@@ -81,9 +84,8 @@ def pre_process():
         
     file = request.files['file']
     try:
-        funcName = request.form.get("funcName")
         lang = request.form.get("prog_lang")
-        if not funcName or not lang:
+        if not lang:
             raise Exception()
         objLang = LanguageFactory.create_object_language(lang)
         langExtension = objLang.langExtension
@@ -219,11 +221,15 @@ def upload_file():
                 _delete_temp_files(TEMP_DIR)
                 return {'errorMsg': "Erro na execução dos códigos!"}, 500
             
-            if status_code != 200:
-                with open(professor_code_path, 'w') as file:
-                    file.write(outputProfessorCodeArgs)
-                professor_code_output = objLang.run_code(professor_code_path, True)
-                result['prof_output'] = professor_code_output
+            try:
+                if status_code != 200:
+                    with open(professor_code_path, 'w') as file:
+                        file.write(outputProfessorCodeArgs)
+                    professor_code_output = objLang.run_code(professor_code_path, True)
+                    result['prof_output'] = professor_code_output
+            except Exception as e:
+                _delete_temp_files(TEMP_DIR)
+                return {'errorMsg': "Server error!"}, 500
             
             resultItem = []
             resultItem.append(result)

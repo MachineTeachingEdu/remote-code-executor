@@ -14,7 +14,8 @@ class JuliaLanguage(BaseLanguage):
         #print(f"baseCodeLines: {self.__baseCodeLines}")
         self.__baseCodeLines = len(baseCode.splitlines())
         importProfLine = f'include("{name_file_professor}.jl")\n'
-        codesComparisonOutput = f"\nprintln({funcName}({arg}...) == {funcNameProf}({arg}...))\nprintln({funcName}({arg}...))\nprintln({funcNameProf}({arg}...))"
+        argFix = arg.replace("'", '"')
+        codesComparisonOutput = f"\nprintln({funcName}({argFix}...) == {funcNameProf}({argFix}...))\nprintln({funcName}({argFix}...))\nprintln({funcNameProf}({argFix}...))"
         resultArgs = importProfLine + baseCode + codesComparisonOutput
         return resultArgs
     

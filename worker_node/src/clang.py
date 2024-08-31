@@ -18,7 +18,7 @@ class CLanguage(BaseLanguage):
         printf_returnType = formats_printf[returnType]
         line_comparison = f'printf("%d\\n", {funcName}({argsTxt}) == {funcNameProf}({argsTxt}));'
         if printf_returnType == "%s":  #Se o retorno for uma string, a comparação será feita com a função strcmp
-            line_comparison = f'printf("%s\\n", strcmp({funcName}({argsTxt}), {funcNameProf}({argsTxt})) == 0);'
+            line_comparison = f'printf("%d\\n", strcmp({funcName}({argsTxt}), {funcNameProf}({argsTxt})) == 0);'
         
         resultArgs = f"""#include <stdio.h>
 #include <string.h>
@@ -133,24 +133,33 @@ def compile_code(file_path: str, offSetLines: int):
     return exec_file_path
 
 def process_compile_errors(compile_error: str, offSetLines: int):
-    error_pattern = re.compile(r'([^:]+):(\d+):(\d+): (\w+): (.+)')   #Uso de expressões regulares
+    compile_error_pattern = re.compile(r'([^:]+):(\d+):(\d+): (\w+): (.+)')   #Uso de expressões regulares
     function_error = ""
     error_message = ""
 
     for line in compile_error.splitlines():  #Percorrendo cada linha das mensagens de erro
-        if " In function " in line:
-            function_error = line.split("In function")[1]
+        if " in function " in line.lower():
+            if " in function " in line:
+                function_error = line.split("in function")[1]
+            elif " In function " in line:
+                function_error = line.split("In function")[1]
             function_error = "In function" + function_error
 
-        match = error_pattern.match(line)
-        if match:
-            filename, line, column, message_type, message = match.groups()
+        match1 = compile_error_pattern.match(line)
+        if match1:
+            filename, line, column, message_type, message = match1.groups()
             lineNumber = int(line) - offSetLines
-            error_message = f"COMPILE ERROR\n{function_error}\nLine {lineNumber}: Char {column}: {message_type}: {message}"
+            error_message += f"COMPILE ERROR\n{function_error}\nLine {lineNumber}: Char {column}: {message_type}: {message}"
             if "redefinition of ‘main’" in error_message:
                 error_message += ". You can't define the main function in your code."
             return error_message
+        
+        if "undefined reference to" in line.lower():
+            function_name = line.split("undefined reference to")[1]
+            error_message += f"{function_error}\nUndefined reference to `{function_name}`"
+            return error_message
     
+    error_message = f"{function_error[:-1]}"
     return error_message
 
 def verify_against_blacklist(code):

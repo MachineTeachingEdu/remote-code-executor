@@ -1,6 +1,7 @@
 from baselanguage import BaseLanguage
 from exceptions import DangerException, CodeException, ImportException, PrintException
 from pathlib import Path
+from config import PRODUCTION
 import os
 import json
 import subprocess
@@ -45,8 +46,10 @@ if error:
     
     def evaluate_file(self, absolute_path: str):
         sast_result_file_path = absolute_path.replace(".py", "") + "_result.json"
-        #os.system(f'bandit -c bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')    #Esta linha é para o container
-        os.system(f'bandit -c /home/nickashu/testeWorkerNode/remote-code-executor/worker_node/bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')
+        if PRODUCTION:
+            os.system(f'bandit -c bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')    #Esta linha é para o container
+        else:
+            os.system(f'bandit -c /home/nickashu/testeWorkerNode/remote-code-executor/worker_node/bandit_config.yml "{absolute_path}"  -f json -o "{sast_result_file_path}"')
 
         test_output = json.load(Path(sast_result_file_path).open())
         metrics = test_output["metrics"]
