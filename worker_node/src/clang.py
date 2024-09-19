@@ -9,12 +9,14 @@ import signal
 class CLanguage(BaseLanguage):
     def __init__(self, langExtension:str):
         self.__offsetCodeLines = 4  #Offset de linhas que vêm antes do código do usuário
+        self.__baseCodeLines = -1
         super().__init__(langExtension)
     
     def base_code_with_args(self, baseCode: str, name_file_professor: str, funcName: str, funcNameProf: str, arg, returnType = ""):
         if returnType == "":
             raise Exception
         argsTxt = extract_args(arg)
+        self.__baseCodeLines = len(baseCode.splitlines())
         printf_returnType = formats_printf[returnType]
         line_comparison = f'printf("%d\\n", {funcName}({argsTxt}) == {funcNameProf}({argsTxt}));'
         if printf_returnType == "%s":  #Se o retorno for uma string, a comparação será feita com a função strcmp
@@ -51,7 +53,7 @@ int main(){{
         return
     
     def run_code(self, file_path: str, isProfessorCode: bool):
-        exec_file_path = compile_code(file_path, self.__offsetCodeLines)
+        exec_file_path = compile_code(file_path, self.__offsetCodeLines, self.__baseCodeLines)
         run_result = subprocess.run([exec_file_path], capture_output=True, text=True)
         if run_result.stderr != "":
             raise CodeException(run_result.stderr)
@@ -59,7 +61,7 @@ int main(){{
             signal_number = -run_result.returncode
             signal_name = signal.Signals(signal_number).name
             msg_error = ""
-            msg_error += f"Runtime Error: Signal: {signal_name} (return code: {run_result.returncode})"
+            msg_error += f"RUNTIME ERROR\nSignal: {signal_name} (return code: {run_result.returncode})"
             if signal_name == "SIGFPE":
                 msg_error += "\nDivision by zero or floating point error."
             elif signal_name == "SIGSEGV":
@@ -78,7 +80,7 @@ int main(){{
         return outputs
     
     def run_pre_process_code(self, file_path: str):   #Verificando erros de sintaxe
-        compile_code(file_path, 3)
+        compile_code(file_path, 3, self.__baseCodeLines)
     
     def pre_process_code(self, code: str, code_path: str):
         code_without_comments = re.sub(r'\/\/.*$', '', code, flags=re.MULTILINE)
@@ -89,6 +91,7 @@ int main(){{
         if has_print:
             raise PrintException("")
         verify_against_blacklist(code_without_comments)
+        self.__baseCodeLines = len(code.splitlines())
         
         importPart = "#include <stdio.h>\n#include <string.h>\n#include <stdlib.h>\n"
         mainPart = "\nint main() {return 0;}"
@@ -121,18 +124,18 @@ def extract_args(args):
             argsTxt += f"{arg}, "
     return argsTxt
 
-def compile_code(file_path: str, offSetLines: int):
+def compile_code(file_path: str, offSetLines: int, baseCodeLines: int):
     file_name_with_extension = os.path.basename(file_path)  #Nome do arquivo (com extensão)
     file_name = os.path.splitext(file_name_with_extension)[0]
     exec_file_path = file_path.replace(file_name_with_extension, file_name)
-    compile_result = subprocess.run(['gcc', '-o', exec_file_path, file_path], capture_output=True, text=True)
+    compile_result = subprocess.run(['gcc', '-o', exec_file_path, file_path, '-lm'], capture_output=True, text=True)  #Importando a biblioteca math.h
     if compile_result.stderr != "":
-        error_message = process_compile_errors(compile_result.stderr, offSetLines)
+        error_message = process_compile_errors(compile_result.stderr, offSetLines, baseCodeLines)
         raise CodeException(error_message)
     
     return exec_file_path
 
-def process_compile_errors(compile_error: str, offSetLines: int):
+def process_compile_errors(compile_error: str, offSetLines: int, baseCodeLines: int):
     compile_error_pattern = re.compile(r'([^:]+):(\d+):(\d+): (\w+): (.+)')   #Uso de expressões regulares
     function_error = ""
     error_message = ""
@@ -143,15 +146,18 @@ def process_compile_errors(compile_error: str, offSetLines: int):
                 function_error = line.split("in function")[1]
             elif " In function " in line:
                 function_error = line.split("In function")[1]
-            function_error = "In function" + function_error
+            function_error = "In function" + function_error + "\n"
 
         match1 = compile_error_pattern.match(line)
         if match1:
             filename, line, column, message_type, message = match1.groups()
             lineNumber = int(line) - offSetLines
-            error_message += f"COMPILE ERROR\n{function_error}\nLine {lineNumber}: Char {column}: {message_type}: {message}"
+            if baseCodeLines != -1 and lineNumber <= baseCodeLines:
+                error_message += f"COMPILE ERROR\n{function_error}Line {lineNumber}: Char {column}: {message_type}: {message}"
+            else:
+                error_message += f"COMPILE ERROR\n{function_error}{message_type}: {message}"
             if "redefinition of ‘main’" in error_message:
-                error_message += ". You can't define the main function in your code."
+                error_message += ". You don't need to define the main function in your code."
             return error_message
         
         if "undefined reference to" in line.lower():

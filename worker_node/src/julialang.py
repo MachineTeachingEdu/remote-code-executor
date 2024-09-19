@@ -21,7 +21,8 @@ class JuliaLanguage(BaseLanguage):
     
     def professor_code_with_args(self, professorCode: str, funcName: str, funcNameProf: str, arg, returnType = ""):
         baseProfCode = professorCode.replace(funcName, funcNameProf)  #Trocando o nome da função no arquivo do professor
-        outputProf = f"\nprintln({funcNameProf}({arg}...))"   #Servirá para printar o output da solução correta
+        argFix = arg.replace("'", '"')
+        outputProf = f"\nprintln({funcNameProf}({argFix}...))"   #Servirá para printar o output da solução correta
         outputProfCode = baseProfCode + outputProf
         return baseProfCode, outputProfCode
     
@@ -69,7 +70,7 @@ def process_errors(stderr: str, offSetLines: int, baseCodeLines: int, file_path:
     
     if match_undef_var:
         var_name = match_undef_var.group(1)
-        error_message = f"ERROR: LoadError: UndefVarError: `{var_name}` not defined"
+        error_message = f"LoadError: UndefVarError: `{var_name}` not defined"
     elif other_errors_match:
         error_type1 = other_errors_match.group(1).strip()
         error_type2 = other_errors_match.group(2).strip()

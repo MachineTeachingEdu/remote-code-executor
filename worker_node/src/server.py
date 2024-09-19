@@ -229,7 +229,7 @@ def upload_file():
                     result['prof_output'] = professor_code_output
             except Exception as e:
                 _delete_temp_files(TEMP_DIR)
-                return {'errorMsg': "Server error!"}, 500
+                return {'errorMsg': "Solution code error!"}, 500
             
             resultItem = []
             resultItem.append(result)
