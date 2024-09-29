@@ -68,7 +68,7 @@ if error:
         return
     
     def run_code(self, file_path: str, isProfessorCode: bool):
-        result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True)
+        result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True, timeout=10)
         if result.stderr != "":
             error_message = process_errors(result.stderr, self.__offsetCodeLines)
             raise CodeException(error_message)
@@ -92,7 +92,7 @@ if error:
     
     
     def run_pre_process_code(self, file_path: str):   #Verificando erros de sintaxe
-        result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True)
+        result = subprocess.run(["python3", f"{file_path}"], capture_output=True, text=True, timeout=10)
         stderr = result.stderr
         if "SyntaxError" in stderr:
             error_message = "SyntaxError:"

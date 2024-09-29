@@ -30,7 +30,7 @@ class JuliaLanguage(BaseLanguage):
         return
     
     def run_code(self, file_path: str, isProfessorCode: bool):
-        result = subprocess.run(["julia", file_path], capture_output=True, text=True)
+        result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=10)
         if result.stderr != "":
             error_message = process_errors(result.stderr, self.__offsetCodeLines, self.__baseCodeLines, file_path)
             raise CodeException(error_message)

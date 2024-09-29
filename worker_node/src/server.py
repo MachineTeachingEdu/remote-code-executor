@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 import zipfile
 import socket
+import subprocess
 from exceptions import DangerException, CodeException, PrintException, ImportException
 from flask_cors import CORS
 import uuid
@@ -143,6 +144,14 @@ def pre_process():
             }
             _delete_temp_files(TEMP_DIR)
             return result
+        except subprocess.TimeoutExpired:
+            result = {
+                'code_status': 5,    #TLE
+                'message': "Time limit exceeded: O código excedeu o tempo limite de execução.",
+                'final_code': '',
+            }
+            _delete_temp_files(TEMP_DIR)
+            return result
         except Exception as e:
             _delete_temp_files(TEMP_DIR)
             return {'errorMsg': "Error: Couldn't extract .zip file and read the code."}, 500
@@ -213,6 +222,14 @@ def upload_file():
                 result = {
                     'isCorrect': False,
                     'code_output': e.message,
+                    'prof_output': '',
+                    'hostname': socket.gethostname(),
+                }
+                status_code = 400
+            except subprocess.TimeoutExpired:
+                result = {
+                    'isCorrect': False,
+                    'code_output': "Time limit exceeded: O código excedeu o tempo limite de execução.",
                     'prof_output': '',
                     'hostname': socket.gethostname(),
                 }
