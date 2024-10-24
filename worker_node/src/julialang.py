@@ -14,14 +14,14 @@ class JuliaLanguage(BaseLanguage):
         #print(f"baseCodeLines: {self.__baseCodeLines}")
         self.__baseCodeLines = len(baseCode.splitlines())
         importProfLine = f'include("{name_file_professor}.jl")\n'
-        argFix = arg.replace("'", '"')
+        argFix = convert_single_to_double_quotes(arg)
         codesComparisonOutput = f"\nprintln({funcName}({argFix}...) == {funcNameProf}({argFix}...))\nprintln({funcName}({argFix}...))\nprintln({funcNameProf}({argFix}...))"
         resultArgs = importProfLine + baseCode + codesComparisonOutput
         return resultArgs
     
     def professor_code_with_args(self, professorCode: str, funcName: str, funcNameProf: str, arg, returnType = ""):
         baseProfCode = professorCode.replace(funcName, funcNameProf)  #Trocando o nome da função no arquivo do professor
-        argFix = arg.replace("'", '"')
+        argFix = convert_single_to_double_quotes(arg)
         outputProf = f"\nprintln({funcNameProf}({argFix}...))"   #Servirá para printar o output da solução correta
         outputProfCode = baseProfCode + outputProf
         return baseProfCode, outputProfCode
@@ -30,7 +30,7 @@ class JuliaLanguage(BaseLanguage):
         return
     
     def run_code(self, file_path: str, isProfessorCode: bool):
-        result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=20)
         if result.stderr != "":
             error_message = process_errors(result.stderr, self.__offsetCodeLines, self.__baseCodeLines, file_path)
             raise CodeException(error_message)
@@ -107,3 +107,13 @@ def process_errors(stderr: str, offSetLines: int, baseCodeLines: int, file_path:
         if int(line_number) <= baseCodeLines:
             error_message += f" on line {line_number}"
     return error_message
+
+def convert_single_to_double_quotes(arg_string):
+    pattern = r"'([^']+)'"
+    def replace_quotes(match):
+        content = match.group(1)
+        if len(content) > 1:  #Somente substitui aspas de strings com mais de 1 caractere
+            return '"' + content + '"'
+        else:
+            return "'" + content + "'"  #Mantém aspas simples para strings de 1 caractere
+    return re.sub(pattern, replace_quotes, arg_string) #Aplicando o regex na string original
