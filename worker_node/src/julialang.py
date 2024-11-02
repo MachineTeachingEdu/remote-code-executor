@@ -15,7 +15,7 @@ class JuliaLanguage(BaseLanguage):
         self.__baseCodeLines = len(baseCode.splitlines())
         importProfLine = f'include("{name_file_professor}.jl")\n'
         argFix = convert_single_to_double_quotes(arg)
-        codesComparisonOutput = f"\nprintln({funcName}({argFix}...) == {funcNameProf}({argFix}...))\nprintln({funcName}({argFix}...))\nprintln({funcNameProf}({argFix}...))"
+        codesComparisonOutput = f"\n\nprintln({funcName}({argFix}...) == {funcNameProf}({argFix}...))\nprintln({funcName}({argFix}...))\nprintln({funcNameProf}({argFix}...))"
         resultArgs = importProfLine + baseCode + codesComparisonOutput
         return resultArgs
     
@@ -39,9 +39,26 @@ class JuliaLanguage(BaseLanguage):
             return outputs[0]
         outputs[0] = True if outputs[0].upper() == "TRUE" else False
         return outputs
+        
+        """
+        #Usando o Daemon Mode:
+        result = subprocess.run(["julia", "-e", "using DaemonMode; runargs()", file_path], capture_output=True, text=True, cwd=os.path.dirname(file_path), timeout=20)
+        if "error" in result.stdout.lower():
+            error_message = process_errors(result.stdout, self.__offsetCodeLines, self.__baseCodeLines, file_path)
+            raise CodeException(error_message)
+        outputs = result.stdout.split("\n")
+        if isProfessorCode:
+            return outputs[0]
+        outputs[0] = True if outputs[0].upper() == "TRUE" else False
+        return outputs
+        """
     
     def run_pre_process_code(self, file_path: str):
-        return
+        result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=20)
+        stderr = result.stderr
+        if stderr != "":
+            error_message = process_errors(stderr, 0, self.__baseCodeLines, file_path)
+            raise CodeException(error_message)
     
     def pre_process_code(self, code: str, code_path: str):
         code_without_comments = re.sub(r'#=(.*?)=#', '', code, flags=re.DOTALL)
@@ -51,6 +68,7 @@ class JuliaLanguage(BaseLanguage):
         has_print = bool(print_regex.search(code_without_comments))
         if has_print:
             raise PrintException("")
+        self.__baseCodeLines = len(code.splitlines())
         self.run_pre_process_code(code_path)
         return code_without_comments
     
@@ -88,15 +106,30 @@ def process_errors(stderr: str, offSetLines: int, baseCodeLines: int, file_path:
                     file_name = file_name.split(":")[0]
                     break
             if file_name != "":
-                error_message = error_message.replace(full_path, file_name)
+                error_message = error_message.replace(full_path, f" in {file_name}")
             else:
                 error_message = ""
         error_message = f"{error_type}: {error_message}"
-        if "Expected `end`" in stderr:
-            error_message += " - Expected `end`"
+        
+        if "└ ──" in stderr or "┘ ──" in stderr or "╙ ──" in stderr:  #Verifica se há uma seta no erro
+            arrow_index = stderr.find("└ ──")
+            if arrow_index == -1:
+                arrow_index = stderr.find("┘ ──")
+            if arrow_index == -1:
+                arrow_index = stderr.find("╙ ──")
+            start_index = arrow_index
+            for i in range(arrow_index + 1, len(stderr)):
+                if stderr[i].isalpha():
+                    start_index = i
+                    break
+            end_index = stderr.find('\n', start_index)
+            if end_index == -1:
+                end_index = len(stderr)
+            extracted = stderr[start_index:end_index].strip()
+            error_message += f" - {extracted}"
     
     #Procurando a linha:
-    stacktrace_pattern = re.compile(r'@\s*(.*\.jl):(\d+)')
+    stacktrace_pattern = re.compile(r'worker_node\s*(.*\.jl):(\d+)')
     stacktrace_matches = stacktrace_pattern.findall(stderr)
     if stacktrace_matches:
         for file_name, line in stacktrace_matches:
