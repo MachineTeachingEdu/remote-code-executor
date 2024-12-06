@@ -129,13 +129,13 @@ def process_errors(stderr: str, offSetLines: int, baseCodeLines: int, file_path:
             error_message += f" - {extracted}"
     
     #Procurando a linha:
-    stacktrace_pattern = re.compile(r'worker_node\s*(.*\.jl):(\d+)')
+    stacktrace_pattern = re.compile(r'run_me.jl:(\d+)')
     stacktrace_matches = stacktrace_pattern.findall(stderr)
     if stacktrace_matches:
-        for file_name, line in stacktrace_matches:
-            if result_path in file_name:
-                line_number = int(line.strip()) - offSetLines
-                break
+        for line in stacktrace_matches:
+            #if result_path in file_name:
+            line_number = int(line.strip()) - offSetLines
+            break
     if baseCodeLines != -1 and line_number != -1:
         if int(line_number) <= baseCodeLines:
             error_message += f" on line {line_number}"
