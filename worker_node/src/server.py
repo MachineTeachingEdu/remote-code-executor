@@ -11,7 +11,7 @@ import uuid
 import logging
 import json
 from languagefactory import LanguageFactory
-from config import PRODUCTION
+from config import CONTAINER
 
 logging.basicConfig(level=logging.INFO)
 BASE_DIR = (Path(__file__).parent / "code").absolute()
@@ -57,7 +57,7 @@ def _delete_temp_files(folder: Path):   #Deletando as pastas temporárias criada
 
 def _create_temp_dir():
     unique_id = uuid.uuid4().hex
-    if PRODUCTION:
+    if CONTAINER:
         os.makedirs(unique_id + "/code")     #Esta linha é para o container
     else:
         current_directory = os.path.dirname(os.path.abspath(__file__))

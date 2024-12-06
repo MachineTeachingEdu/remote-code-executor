@@ -1,1 +1,1 @@
-PRODUCTION = False
+CONTAINER = False
