@@ -76,6 +76,18 @@ def health_check():
 def health_check_pre_process():
     return {'message': f'Endpoint para pré-processamento do código!! From {socket.gethostname()}!'}, 200
 
+""""
+#Teste de comunicação com a API Django:
+@app.route('/get-items', methods=['GET'])
+def get_items():
+    django_api_url = 'http://127.0.0.1:8000/pt-br/api/v1/authors/1'   #URL da API Django
+    response = requests.get(django_api_url)   #Fazendo a requisição GET para a API Django
+    if response.status_code == 200:
+        data = response.json()
+        return jsonify(data)
+    else:
+        return jsonify({'error': 'Failed to fetch data from Django API'}), 500
+"""
 
 @app.route('/pre-process', methods=['POST'])    #Endpoint usado para o pré-processamento dos códigos submetidos
 def pre_process():

@@ -1,1 +1,1 @@
-CONTAINER = False
+CONTAINER = True

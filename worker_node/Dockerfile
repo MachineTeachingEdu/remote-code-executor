@@ -1,5 +1,9 @@
 FROM python:3.8-slim-buster
 
+#Definindo variáveis de ambiente
+ENV PORT=5000
+WORKDIR /app
+
 #Expondo a porta 5000
 EXPOSE 5000
 
@@ -16,9 +20,9 @@ COPY requirements.txt requirements.txt
 COPY src/ . 
 COPY bandit_config.yml .
 
-#RUN pip3 install -r requirements.txt
 #Instalar dependências do Python
 RUN pip3 install --no-cache-dir -r requirements.txt
+
 #Criar diretório para códigos
 RUN mkdir code
 
