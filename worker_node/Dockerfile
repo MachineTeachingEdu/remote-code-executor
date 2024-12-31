@@ -3,6 +3,7 @@ FROM python:3.8-slim-buster
 #Definindo variáveis de ambiente
 ENV PORT=5000
 ENV RUNNING_IN_DOCKER=True
+ENV DJANGO_API_URL=http://localhost:8020/pt-br/problem_details
 WORKDIR /app
 
 #Expondo a porta 5000

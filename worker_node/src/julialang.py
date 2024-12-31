@@ -29,6 +29,7 @@ class JuliaLanguage(BaseLanguage):
     def evaluate_file(self, absolute_path: str):    #Por enquanto, não há verificações para Julia
         return
     
+
     def run_code(self, file_path: str, isProfessorCode: bool):
         result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=20)
         if result.stderr != "":
@@ -40,19 +41,49 @@ class JuliaLanguage(BaseLanguage):
         outputs[0] = True if outputs[0].upper() == "TRUE" else False
         return outputs
         
-        """
         #Usando o Daemon Mode:
-        result = subprocess.run(["julia", "-e", "using DaemonMode; runargs()", file_path], capture_output=True, text=True, cwd=os.path.dirname(file_path), timeout=20)
-        if "error" in result.stdout.lower():
-            error_message = process_errors(result.stdout, self.__offsetCodeLines, self.__baseCodeLines, file_path)
+        #result = subprocess.run(["julia", "-e", "using DaemonMode; runargs()", file_path], capture_output=True, text=True, cwd=os.path.dirname(file_path), timeout=20)
+        #if "error" in result.stdout.lower():
+        #    error_message = process_errors(result.stdout, self.__offsetCodeLines, self.__baseCodeLines, file_path)
+        #    raise CodeException(error_message)
+        #outputs = result.stdout.split("\n")
+        #if isProfessorCode:
+        #    return outputs[0]
+        #outputs[0] = True if outputs[0].upper() == "TRUE" else False
+        #return outputs
+
+    """
+    def run_code(self, file_path: str, isProfessorCode: bool, juliaREPLSession, isFirst: bool, isLast: bool):   #Testando o REPL   
+        juliaREPLSession.stdin.write(f'include("{file_path}")' + "\n")  # Envia o comando
+        juliaREPLSession.stdin.flush()
+        
+        # Captura a saída normal (stdout) e erros (stderr)
+        output = ""
+        errors = ""
+        while True:
+            # Leia stdout
+            line = juliaREPLSession.stdout.readline()
+            if line.strip() == "":  # Fim da saída padrão
+                break
+            output += line.strip()
+
+        while True:
+            # Leia stderr
+            error_line = juliaREPLSession.stderr.readline()
+            if error_line.strip() == "":  # Fim dos erros
+                break
+            errors += error_line.strip()
+    
+        if errors != "":
+            error_message = process_errors(errors, self.__offsetCodeLines, self.__baseCodeLines, file_path)
             raise CodeException(error_message)
-        outputs = result.stdout.split("\n")
+        outputs = output.split("\n")
         if isProfessorCode:
             return outputs[0]
         outputs[0] = True if outputs[0].upper() == "TRUE" else False
         return outputs
-        """
-    
+    """
+
     def run_pre_process_code(self, file_path: str):
         result = subprocess.run(["julia", file_path], capture_output=True, text=True, timeout=20)
         stderr = result.stderr
